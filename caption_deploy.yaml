@@ -1,0 +1,51 @@
+proxy_location: EveryNode
+
+http_options:
+# These are basic HTTP options. You can configure them as you please.
+  host: 0.0.0.0
+  port: 8000
+
+grpc_options:
+  port: 9000
+  grpc_servicer_functions: []
+
+logging_config:
+  encoding: TEXT
+  log_level: INFO
+  # This is the directory where your terminal logs will be stored for each run.
+  logs_dir: null
+  enable_access_log: true
+
+applications:
+
+- name: caption-app # give it any name
+
+  route_prefix: /my-api # this is your API route prefix. This will be a prefix to all of your FastAPI routes.
+
+  import_path: caption_model:entry # tells ray to go caption_mode.py file and look for the bind() method
+
+  # Configure the runtime_env to use a specific python virtual environment.
+  runtime_env: {
+    "env_vars": {
+        "PYTHONPATH": "/opt/venv/bin/python"
+    }
+  }
+
+  # This is the part where you configure the replicas.
+  deployments:
+
+  - name: YourBigModel # This should be same as the class name where we added the ray serve annotation.
+
+    # number of replicas, i.e. parallel deployments. You can have one model instance per GPU.
+    # I believe it is possible to have multiple replicas (subject to available GPU memory) on a single GPU, but that often leads to memory issues. You can try and see how it goes.
+    # For example, if you want to deploy a model on 8 GPUs, num_replicas should be 8.
+    num_replicas: 1
+
+    ray_actor_options:
+      num_cpus: 1.0 # You do need at least 1 CPU per replica.
+      num_gpus: 1.0 # Higher if one instance of your model needs more than 1 GPU.
+      # If one instance of your models needs 2 GPUs and you have 8 GPUs total, then num_replicas should be 4 (8 / 2), otherwise your deployment will have insufficent resources.
+
+  # You can add more models under the deployments section. 
+  # You can also decouple multiple models across different files and have one config to drive the full deployment together.
+  # There are many other configurations that you can dive deeper into here - https://docs.ray.io/en/latest/serve/configure-serve-deployment.html#serve-configure-deployment
